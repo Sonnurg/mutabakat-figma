@@ -247,11 +247,19 @@ export function DownloadPage({ onStartOver }: DownloadPageProps) {
                 </div>
               <Button 
   style={{ backgroundColor: '#228B22', color: 'white' }}
-  onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/api/download-zip`, "_blank")}
+  onClick={() => {
+    const link = document.createElement("a");
+    link.href = `${import.meta.env.VITE_API_BASE_URL}/api/download-zip`;
+    link.setAttribute("download", "mutabakatlar.zip");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }}
 >
   <Download className="w-4 h-4 mr-2" />
   Download ZIP
 </Button>
+
               </div>
 
               <div 
@@ -303,13 +311,18 @@ export function DownloadPage({ onStartOver }: DownloadPageProps) {
    <Button 
   variant="ghost" 
   size="sm"
-  onClick={() => window.open(
-    `${import.meta.env.VITE_API_BASE_URL}/api/download-file/${encodeURIComponent(filename)}`,
-    "_blank"
-  )}
+  onClick={() => {
+    const link = document.createElement("a");
+    link.href = `${import.meta.env.VITE_API_BASE_URL}/api/download-file/${encodeURIComponent(filename)}`;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }}
 >
   <Download className="w-4 h-4" />
 </Button>
+
                 </div>
               ))}
             </div>
