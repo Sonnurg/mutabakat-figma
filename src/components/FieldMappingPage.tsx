@@ -91,12 +91,13 @@ const templateFields: TemplateField[] = [
   }
 ];
 
-const excelColumns: ExcelColumn[] = [
-  { id: 'col1', name: 'Customer Name', type: 'text', sample: 'ABC Corp' },
-  { id: 'col2', name: 'Balance', type: 'number', sample: '$2,500.00' },
-  { id: 'col3', name: 'Account', type: 'text', sample: 'ACC001' },
-  { id: 'col4', name: 'Date', type: 'date', sample: '2024-01-15' }
-];
+const [excelColumns, setExcelColumns] = useState<ExcelColumn[]>([]);
+
+useEffect(() => {
+  fetch(`${import.meta.env.VITE_API_BASE_URL}/api/get-columns`)
+    .then(res => res.json())
+    .then(data => setExcelColumns(data.columns));
+}, []);
 
 const staticValues: StaticValue[] = [
   { id: 'today', name: "Today's Date", type: 'date', icon: Calendar },
