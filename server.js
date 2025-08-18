@@ -16,7 +16,6 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001; // ✅ Render için dinamik PORT
 
-// ✅ CORS ayarı – Netlify ve Render URL'lerini ekle
 app.use(cors({
   origin: [
     'http://localhost:5173',
