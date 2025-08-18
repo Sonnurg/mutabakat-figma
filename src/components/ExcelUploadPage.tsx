@@ -9,12 +9,14 @@ interface ExcelUploadPageProps {
 }
 
 interface ExcelData {
-  fileId: string;
+  fileId?: string;   // artık backend’den gelmeyebilir
   filename: string;
-  headers: string[];
+  headers?: string[];
   rowCount: number;
-  preview: any[];
+  preview?: any[];
+  files?: string[];  // ✅ yeni alan
 }
+
 
 export function ExcelUploadPage({ onNext, onBack }: ExcelUploadPageProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -46,41 +48,33 @@ export function ExcelUploadPage({ onNext, onBack }: ExcelUploadPageProps) {
     setUploadStatus('idle');
     setErrorMessage('');
 
-    try {
-      const formData = new FormData();
-formData.append("excel", file);
+try {
+  const formData = new FormData();
+  formData.append("excel", file);
 
-  
-const response = await fetch(`${API_BASE_URL}/api/upload-excel`, {
-  method: "POST",
-  body: formData,
-});
-const result = await response.json();
+  const response = await fetch(`${API_BASE_URL}/api/upload-excel`, {
+    method: "POST",
+    body: formData,
+  });
+  const result = await response.json();
 
-      if (result.success) {
-        const excelData: ExcelData = {
-          fileId: result.data.fileId,
-          filename: result.data.filename,
-          headers: result.data.headers,
-          rowCount: result.data.rowCount,
-          preview: result.data.preview
-        };
-
-        setUploadedData(excelData);
-        setUploadStatus('success');
-        console.log('Excel yükleme başarılı:', excelData);
-      } else {
-        setErrorMessage(result.error || 'Dosya yükleme başarısız');
-        setUploadStatus('error');
-      }
-    } catch (error) {
-      console.error('Upload hatası:', error);
-      setErrorMessage('Sunucu bağlantı hatası. Backend çalışıyor mu?');
-      setUploadStatus('error');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  if (result.success) {
+    // Backend artık 'data' dönmüyor → 'files' dönüyor
+    setUploadedData({
+      filename: file.name,
+      rowCount: result.files.length,
+      files: result.files,
+    });
+    setUploadStatus('success');
+    console.log('Excel yükleme başarılı:', result.files);
+  } else {
+    setErrorMessage(result.error || 'Dosya yükleme başarısız');
+    setUploadStatus('error');
+  }
+} catch (err) {
+  console.error("Excel upload error:", err);
+  setUploadStatus("error");
+}
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -272,4 +266,5 @@ const result = await response.json();
       </div>
     </div>
   );
+}
 }
