@@ -245,10 +245,13 @@ export function DownloadPage({ onStartOver }: DownloadPageProps) {
                     </p>
                   </div>
                 </div>
-                <Button style={{ backgroundColor: '#228B22', color: 'white' }}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download ZIP
-                </Button>
+              <Button 
+  style={{ backgroundColor: '#228B22', color: 'white' }}
+  onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/api/download-zip`, "_blank")}
+>
+  <Download className="w-4 h-4 mr-2" />
+  Download ZIP
+</Button>
               </div>
 
               <div 
@@ -297,9 +300,13 @@ export function DownloadPage({ onStartOver }: DownloadPageProps) {
                       {filename}
                     </span>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Download className="w-4 h-4" />
-                  </Button>
+                 <Button 
+  variant="ghost" 
+  size="sm"
+  onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/api/download-file/${encodeURIComponent(filename)}`, "_blank")}
+>
+  <Download className="w-4 h-4" />
+</Button>
                 </div>
               ))}
             </div>
