@@ -300,10 +300,13 @@ export function DownloadPage({ onStartOver }: DownloadPageProps) {
                       {filename}
                     </span>
                   </div>
-                 <Button 
+   <Button 
   variant="ghost" 
   size="sm"
-  onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/api/download-file/${encodeURIComponent(filename)}`, "_blank")}
+  onClick={() => window.open(
+    `${import.meta.env.VITE_API_BASE_URL}/api/download-file/${encodeURIComponent(filename)}`,
+    "_blank"
+  )}
 >
   <Download className="w-4 h-4" />
 </Button>
