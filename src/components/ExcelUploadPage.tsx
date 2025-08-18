@@ -1,313 +1,276 @@
-import { useState, useCallback } from 'react';
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Progress } from "./ui/progress";
-import { Badge } from "./ui/badge";
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  CheckCircle, 
-  AlertCircle,
-  File,
-  ArrowLeft,
-  ArrowRight
-} from "lucide-react";
+import React, { useState, useRef } from 'react';
+import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface ExcelUploadPageProps {
-  onNext: () => void;
+  onNext: (data: ExcelData) => void;
   onBack: () => void;
 }
 
-interface FileData {
-  name: string;
-  size: number;
-  type: string;
-  preview?: any[];
+interface ExcelData {
+  fileId: string;
+  filename: string;
+  headers: string[];
+  rowCount: number;
+  preview: any[];
 }
 
 export function ExcelUploadPage({ onNext, onBack }: ExcelUploadPageProps) {
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<FileData | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [uploadedData, setUploadedData] = useState<ExcelData | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    // Dosya tipi kontrolü
+    const allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'];
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
+      setErrorMessage('Lütfen sadece Excel dosyaları (.xlsx, .xls, .csv) yükleyin.');
+      setUploadStatus('error');
+      return;
     }
-  }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
+    // Dosya boyutu kontrolü (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMessage('Dosya boyutu 10MB\'dan küçük olmalıdır.');
+      setUploadStatus('error');
+      return;
     }
-  }, []);
 
-  const handleFileUpload = (file: File) => {
-    if (file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
-      setUploading(true);
-      setUploadProgress(0);
+    setIsUploading(true);
+    setUploadStatus('idle');
+    setErrorMessage('');
 
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setUploading(false);
-            
-            // Mock file data with preview
-            setUploadedFile({
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              preview: [
-                { "SÜTUN A": "ABC Şirketi", "SÜTUN B": "15,250.00", "SÜTUN C": "HSP001", "SÜTUN D": "15.01.2024" },
-                { "SÜTUN A": "XYZ Ltd Şti", "SÜTUN B": "8,750.50", "SÜTUN C": "HSP002", "SÜTUN D": "16.01.2024" },
-                { "SÜTUN A": "Ömer Mühendislik", "SÜTUN B": "22,100.75", "SÜTUN C": "HSP003", "SÜTUN D": "17.01.2024" },
-                { "SÜTUN A": "Yılmaz Ticaret", "SÜTUN B": "5,675.25", "SÜTUN C": "HSP004", "SÜTUN D": "18.01.2024" },
-                { "SÜTUN A": "Demir İnşaat", "SÜTUN B": "31,500.00", "SÜTUN C": "HSP005", "SÜTUN D": "19.01.2024" }
-              ]
-            });
-            return 100;
-          }
-          return prev + 20;
-        });
-      }, 400);
+    try {
+      const formData = new FormData();
+      formData.append('excel', file);
+
+      // GitHub Codespaces için dinamik URL
+      const baseURL = window.location.hostname.includes('github.dev') 
+        ? `https://${window.location.hostname.replace('-5173', '-3001')}`
+        : 'http://localhost:3001';
+      
+      const response = await fetch(`${baseURL}/api/upload-excel`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const excelData: ExcelData = {
+          fileId: result.data.fileId,
+          filename: result.data.filename,
+          headers: result.data.headers,
+          rowCount: result.data.rowCount,
+          preview: result.data.preview
+        };
+
+        setUploadedData(excelData);
+        setUploadStatus('success');
+        console.log('Excel yükleme başarılı:', excelData);
+      } else {
+        setErrorMessage(result.error || 'Dosya yükleme başarısız');
+        setUploadStatus('error');
+      }
+    } catch (error) {
+      console.error('Upload hatası:', error);
+      setErrorMessage('Sunucu bağlantı hatası. Backend çalışıyor mu?');
+      setUploadStatus('error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileUpload(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const handleContinue = () => {
+    if (uploadedData) {
+      onNext(uploadedData);
+    }
   };
 
   return (
-    <div className="flex-1" style={{ backgroundColor: '#FAF7F0' }}>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#3E2723' }}>
-            Upload Your Excel File
+    <div className="flex-1 flex items-center justify-center min-h-[80vh] bg-[#FAF7F0] p-6">
+      <div className="max-w-2xl mx-auto w-full">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-[#3E2723] mb-4">
+            Excel Dosyanızı Yükleyin
           </h1>
-          <p style={{ color: '#8B7D6B' }}>
-            Upload your Excel file containing the data to be merged
+          <p className="text-lg text-[#8B7D6B]">
+            Mutabakat mektubu oluşturmak için Excel dosyanızı seçin
           </p>
         </div>
 
-        {!uploadedFile ? (
-          <Card className="mb-6">
-            <CardContent className="p-8">
-              {uploading ? (
-                <div className="text-center">
-                  <FileSpreadsheet className="w-16 h-16 mx-auto mb-4" style={{ color: '#228B22' }} />
-                  <h3 className="text-lg font-semibold mb-2" style={{ color: '#3E2723' }}>
-                    Uploading File...
-                  </h3>
-                  <Progress 
-                    value={uploadProgress} 
-                    className="w-full max-w-md mx-auto mb-2"
-                  />
-                  <p className="text-sm" style={{ color: '#8B7D6B' }}>
-                    {uploadProgress}% complete
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className={`border-3 border-dashed rounded-xl p-12 text-center transition-all duration-300 ${
-                    dragActive 
-                      ? 'border-[#228B22] bg-[#98D8C8]' 
-                      : 'border-[#87A96B] hover:border-[#228B22] hover:bg-[#98D8C8]'
-                  }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                >
-                  <div className="mb-6">
-                    <div 
-                      className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
-                      style={{ backgroundColor: '#DAA520' }}
-                    >
-                      <Upload className="w-10 h-10 text-white" />
-                    </div>
-                    <span className="text-6xl">📊</span>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#3E2723' }}>
-                    Drag your Excel file here
-                  </h3>
-                  <p className="mb-6" style={{ color: '#8B7D6B' }}>
-                    or click to browse files
-                  </p>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label htmlFor="file-upload">
-                    <Button 
-                      className="mb-4"
-                      style={{ backgroundColor: '#228B22', color: 'white' }}
-                    >
-                      Browse Files
-                    </Button>
-                  </label>
-                  <p className="text-sm" style={{ color: '#8B7D6B' }}>
-                    Supported formats: .xlsx, .xls, .csv (Max 10MB)
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {/* File Info */}
-            <Card 
-              style={{ 
-                backgroundColor: '#98D8C8',
-                borderColor: '#228B22'
-              }}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2" style={{ color: '#3E2723' }}>
-                  <CheckCircle className="w-5 h-5" style={{ color: '#228B22' }} />
-                  <span>File Uploaded Successfully</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div 
-                  className="flex items-center space-x-4 p-4 rounded-lg"
-                  style={{ backgroundColor: 'white' }}
-                >
-                  <FileSpreadsheet className="w-8 h-8" style={{ color: '#228B22' }} />
-                  <div className="flex-1">
-                    <p className="font-medium" style={{ color: '#3E2723' }}>
-                      {uploadedFile.name}
-                    </p>
-                    <p className="text-sm" style={{ color: '#8B7D6B' }}>
-                      {formatFileSize(uploadedFile.size)} • Excel Spreadsheet
-                    </p>
-                  </div>
-                  <Badge 
-                    style={{ 
-                      backgroundColor: '#228B22',
-                      color: 'white'
-                    }}
-                  >
-                    Ready
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Upload Area */}
+        <div className="mb-8">
+          <div
+            className={`
+              border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200
+              ${isDragOver 
+                ? 'border-[#228B22] bg-[#98D8C8] bg-opacity-20' 
+                : uploadStatus === 'success'
+                ? 'border-[#228B22] bg-[#98D8C8] bg-opacity-10'
+                : uploadStatus === 'error'
+                ? 'border-red-400 bg-red-50'
+                : 'border-[#8B4513] bg-white hover:border-[#228B22] hover:bg-[#F5DEB3] hover:bg-opacity-30'
+              }
+              cursor-pointer
+            `}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
 
-            {/* Data Preview */}
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ color: '#3E2723' }}>Data Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr style={{ backgroundColor: '#228B22' }}>
-                        {Object.keys(uploadedFile.preview?.[0] || {}).map((header) => (
-                          <th 
-                            key={header}
-                            className="text-left p-3 font-medium text-white"
-                          >
-                            {header}
-                          </th>
+            {isUploading ? (
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#228B22] mb-4"></div>
+                <p className="text-[#3E2723] font-medium">Dosya yükleniyor...</p>
+              </div>
+            ) : uploadStatus === 'success' ? (
+              <div className="flex flex-col items-center text-[#228B22]">
+                <CheckCircle className="w-16 h-16 mb-4" />
+                <p className="text-xl font-semibold mb-2">Başarılı!</p>
+                <p className="text-[#3E2723]">{uploadedData?.filename}</p>
+              </div>
+            ) : uploadStatus === 'error' ? (
+              <div className="flex flex-col items-center text-red-600">
+                <AlertCircle className="w-16 h-16 mb-4" />
+                <p className="text-xl font-semibold mb-2">Hata!</p>
+                <p className="text-red-700">{errorMessage}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center text-[#8B7D6B]">
+                <Upload className="w-16 h-16 mb-4 text-[#DAA520]" />
+                <p className="text-xl font-semibold text-[#3E2723] mb-2">
+                  Excel dosyanızı buraya sürükleyin
+                </p>
+                <p className="text-lg mb-4">veya</p>
+                <button className="bg-[#228B22] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#1a6b1a] transition-colors">
+                  Dosya Seç
+                </button>
+              </div>
+            )}
+          </div>
+
+          <p className="text-center text-sm text-[#8B7D6B] mt-4">
+            Desteklenen formatlar: .xlsx, .xls, .csv (Max 10MB)
+          </p>
+        </div>
+
+        {/* Data Preview */}
+        {uploadedData && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-[#E5E7EB] mb-8">
+            <h3 className="text-lg font-semibold text-[#3E2723] mb-4">Veri Önizlemesi</h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-[#F5DEB3] bg-opacity-30 p-3 rounded-lg">
+                <p className="text-sm text-[#8B7D6B]">Toplam Satır</p>
+                <p className="text-xl font-bold text-[#3E2723]">{uploadedData.rowCount}</p>
+              </div>
+              <div className="bg-[#F5DEB3] bg-opacity-30 p-3 rounded-lg">
+                <p className="text-sm text-[#8B7D6B]">Sütun Sayısı</p>
+                <p className="text-xl font-bold text-[#3E2723]">{uploadedData.headers.length}</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h4 className="font-medium text-[#3E2723] mb-2">Sütun Başlıkları:</h4>
+              <div className="flex flex-wrap gap-2">
+                {uploadedData.headers.map((header, index) => (
+                  <span 
+                    key={index}
+                    className="bg-[#87A96B] text-white px-3 py-1 rounded-full text-sm"
+                  >
+                    {header}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-[#3E2723] mb-2">İlk 3 Satır Önizlemesi:</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#F5DEB3] bg-opacity-50">
+                      {uploadedData.headers.map((header, index) => (
+                        <th key={index} className="text-left p-2 font-medium text-[#3E2723]">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {uploadedData.preview.slice(0, 3).map((row, rowIndex) => (
+                      <tr key={rowIndex} className="border-b border-[#E5E7EB]">
+                        {uploadedData.headers.map((header, colIndex) => (
+                          <td key={colIndex} className="p-2 text-[#3E2723]">
+                            {String(row[header] || '')}
+                          </td>
                         ))}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {uploadedFile.preview?.map((row, index) => (
-                        <tr 
-                          key={index} 
-                          className="hover:opacity-80 transition-opacity"
-                          style={{ 
-                            backgroundColor: index % 2 === 0 ? 'white' : '#FAF7F0'
-                          }}
-                        >
-                          {Object.values(row).map((value, cellIndex) => (
-                            <td 
-                              key={cellIndex}
-                              className="p-3"
-                              style={{ 
-                                color: '#3E2723',
-                                borderBottom: '1px solid #F5DEB3'
-                              }}
-                            >
-                              {value as string}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div 
-                  className="mt-4 p-4 rounded-lg"
-                  style={{ backgroundColor: '#98D8C8' }}
-                >
-                  <div className="flex items-start space-x-3">
-                    <AlertCircle className="w-5 h-5 mt-0.5" style={{ color: '#228B22' }} />
-                    <div>
-                      <p className="font-medium" style={{ color: '#3E2723' }}>
-                        File Analysis Complete
-                      </p>
-                      <p className="text-sm" style={{ color: '#3E2723' }}>
-                        Found 5 records with 4 columns. All data appears to be valid and ready for processing.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="flex justify-between mt-8">
-          <Button 
-            variant="outline" 
-            onClick={onBack} 
-            className="flex items-center space-x-2"
-            style={{ borderColor: '#8B4513', color: '#8B4513' }}
+        {/* Action Buttons */}
+        <div className="flex justify-between">
+          <button
+            onClick={onBack}
+            className="bg-[#F5DEB3] text-[#8B4513] px-6 py-3 rounded-lg font-medium hover:bg-[#DAA520] hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Geri</span>
-          </Button>
+            Geri
+          </button>
           
-          <Button 
-            onClick={onNext} 
-            disabled={!uploadedFile}
-            className="flex items-center space-x-2"
-            style={{ 
-              backgroundColor: uploadedFile ? '#228B22' : '#8B7D6B',
-              color: 'white'
-            }}
-          >
-            <span>Sonraki Adım</span>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          {uploadedData && (
+            <button
+              onClick={handleContinue}
+              className="bg-[#228B22] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#1a6b1a] transition-colors"
+            >
+              Devam Et
+            </button>
+          )}
         </div>
       </div>
     </div>
