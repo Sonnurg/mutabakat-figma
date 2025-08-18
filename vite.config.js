@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/mutabakat-figma/', // GitHub repository adınızı yazın
+  base: "./",   // ✅ Netlify için doğru
   build: {
-    outDir: 'dist'
+    outDir: "dist"
   }
 })
