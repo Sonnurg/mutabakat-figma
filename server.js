@@ -72,13 +72,18 @@ app.post("/api/upload-excel", upload.single("excel"), (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
+    // 🔹 Frontend’in beklediği formatta dön
     res.json({
       success: true,
-      message: "Excel dosyası başarıyla yüklendi ✅",
-      file: req.file,
-      rowCount: data.length, // satır sayısı
-      preview: data.slice(0, 5), // ilk 5 satır önizleme
+      data: {
+        fileId: req.file.filename, // benzersiz ID
+        filename: req.file.originalname,
+        headers: Object.keys(data[0] || {}), // Excel başlıkları
+        rowCount: data.length,
+        preview: data.slice(0, 5),
+      }
     });
+
   } catch (error) {
     console.error("Excel yükleme hatası:", error);
     res.status(500).json({
@@ -88,7 +93,6 @@ app.post("/api/upload-excel", upload.single("excel"), (req, res) => {
     });
   }
 });
-
 // Test endpoint
 app.get("/api/ping", (req, res) => {
   res.json({ success: true, message: "API çalışıyor 🚀" });
