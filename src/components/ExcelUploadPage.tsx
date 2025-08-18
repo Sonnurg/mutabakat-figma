@@ -1,6 +1,7 @@
+import API_BASE_URL from "../config";
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
-import API_BASE_URL from "../config";
+
 
 interface ExcelUploadPageProps {
   onNext: (data: ExcelData) => void;
@@ -47,15 +48,14 @@ export function ExcelUploadPage({ onNext, onBack }: ExcelUploadPageProps) {
 
     try {
       const formData = new FormData();
-      formData.append('excel', file);
+formData.append("excel", file);
 
   
 const response = await fetch(`${API_BASE_URL}/api/upload-excel`, {
   method: "POST",
   body: formData,
 });
-
-      const result = await response.json();
+const result = await response.json();
 
       if (result.success) {
         const excelData: ExcelData = {
