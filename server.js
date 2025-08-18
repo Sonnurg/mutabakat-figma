@@ -7,6 +7,7 @@ import fs from "fs";
 import XLSX from "xlsx";
 import puppeteer from "puppeteer";
 import { fileURLToPath } from "url";
+import archiver from "archiver";
 
 // ES Modules için __dirname tanımla
 const __filename = fileURLToPath(import.meta.url);
@@ -98,6 +99,33 @@ app.get("/api/ping", (req, res) => {
   res.json({ success: true, message: "API çalışıyor 🚀" });
 });
 
+// 📌 ZIP indirme endpoint
+app.get("/api/download-zip", (req, res) => {
+  try {
+    const outputDir = path.join(__dirname, "output");
+    const zipPath = path.join(__dirname, "temp", "mutabakatlar.zip");
+
+    // temp klasörüne zip dosyası yaz
+    const output = fs.createWriteStream(zipPath);
+    const archive = archiver("zip", { zlib: { level: 9 } });
+
+    archive.pipe(output);
+    archive.directory(outputDir, false); // sadece output içeriğini ekle
+    archive.finalize();
+
+    output.on("close", () => {
+      res.download(zipPath, "mutabakatlar.zip", (err) => {
+        if (err) {
+          console.error("ZIP indirme hatası:", err);
+          res.status(500).send("ZIP indirilemedi ❌");
+        }
+      });
+    });
+  } catch (error) {
+    console.error("ZIP endpoint hatası:", error);
+    res.status(500).send("ZIP oluşturulamadı ❌");
+  }
+});
 // 🚀 Server başlat
 app.listen(PORT, () => {
   console.log(`🚀 Backend server çalışıyor: http://localhost:${PORT}`);
