@@ -49,15 +49,11 @@ export function ExcelUploadPage({ onNext, onBack }: ExcelUploadPageProps) {
       const formData = new FormData();
       formData.append('excel', file);
 
-     const baseURL = window.location.hostname.includes('github.dev') 
-  ? `https://${window.location.hostname.replace('-5173', '-3001')}`
-  : 'http://localhost:3001';
-
+  
 const response = await fetch(`${API_BASE_URL}/api/upload-excel`, {
   method: "POST",
   body: formData,
 });
-
 
       const result = await response.json();
 
