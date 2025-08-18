@@ -19,12 +19,13 @@ const PORT = process.env.PORT || 3001; // ✅ Render için dinamik PORT
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "http://127.0.0.1:5173",
-      "https://mutabakat-figma.netlify.app", // Netlify frontend
-      /\.onrender\.com$/, // Render backend
-    ],
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'https://mutabakat-figma.netlify.app',
+  'https://mutabakat-snnr.netlify.app',  // yeni eklendi
+  /\.onrender\.com$/
+],
     credentials: true,
   })
 );
