@@ -126,6 +126,20 @@ app.get("/api/download-zip", (req, res) => {
     res.status(500).send("ZIP oluşturulamadı ❌");
   }
 });
+// Tek dosya indirme endpoint
+app.get("/api/download-file/:filename", (req, res) => {
+  try {
+    const filePath = path.join(__dirname, "output", req.params.filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send("Dosya bulunamadı ❌");
+    }
+    res.download(filePath, req.params.filename);
+  } catch (error) {
+    console.error("Dosya indirme hatası:", error);
+    res.status(500).send("Dosya indirilemedi ❌");
+  }
+});
+
 // 🚀 Server başlat
 app.listen(PORT, () => {
   console.log(`🚀 Backend server çalışıyor: http://localhost:${PORT}`);
