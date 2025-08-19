@@ -81,11 +81,12 @@ app.post("/api/upload-excel", upload.single("excel"), async (req, res) => {
       doc.end();
     });
 
-    res.json({
-      success: true,
-      message: `${rows.length} PDF üretildi ✅`,
-      files: fs.readdirSync(outputDir),
-    });
+   res.json({
+  success: true,
+  message: `${rows.length} PDF üretildi ✅`,
+  files: fs.readdirSync(outputDir),
+  rows: rows   // ✅ Excel satırlarını dön
+});
   } catch (err) {
     console.error("Excel upload + PDF üretim hatası:", err);
     res
