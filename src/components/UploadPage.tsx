@@ -51,38 +51,44 @@ export function UploadPage({ onNext, onBack }: UploadPageProps) {
     }
   }, []);
 
-  const handleFileUpload = (file: File) => {
-    if (file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-      setUploading(true);
-      setUploadProgress(0);
+const handleFileUpload = async (file: File) => {
+  if (file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+    setUploading(true);
+    setUploadProgress(0);
 
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setUploading(false);
-            
-            // Mock file data with preview
-            setUploadedFile({
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              preview: [
-                { CustomerName: "ABC Corp", Balance: "$2,500.00", Account: "ACC001", Date: "2024-01-15" },
-                { CustomerName: "XYZ Ltd", Balance: "$1,850.75", Account: "ACC002", Date: "2024-01-16" },
-                { CustomerName: "Smith Industries", Balance: "$3,200.50", Account: "ACC003", Date: "2024-01-17" },
-                { CustomerName: "Johnson & Co", Balance: "$975.25", Account: "ACC004", Date: "2024-01-18" },
-                { CustomerName: "Brown Enterprises", Balance: "$4,100.00", Account: "ACC005", Date: "2024-01-19" }
-              ]
-            });
-            return 100;
-          }
-          return prev + 20;
+    const formData = new FormData();
+    formData.append("excel", file);
+
+    try {
+      const res = await fetch(
+        import.meta.env.VITE_API_URL + "/api/upload-excel",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        setUploadedFile({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          preview: data.rows || []   // ✅ backend’den excel’den parse edilen satırları döndür
         });
-      }, 300);
+      } else {
+        alert("Yükleme hatası: " + data.message);
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Sunucuya bağlanılamadı ❌");
+    } finally {
+      setUploading(false);
+      setUploadProgress(100);
     }
-  };
+  }
+};
+
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
