@@ -57,9 +57,10 @@ app.post("/api/upload-excel", upload.single("excel"), async (req, res) => {
 
     // PDF üret
     const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  headless: true,
+  executablePath: puppeteer.executablePath(), // doğru yolu bulması için
+});
     const outputDir = path.join(__dirname, "output");
     fs.rmSync(outputDir, { recursive: true, force: true }); // önce temizle
     fs.mkdirSync(outputDir, { recursive: true });
