@@ -61,12 +61,13 @@ const handleFileUpload = async (file: File) => {
 
     try {
      const res = await fetch(
-  import.meta.env.VITE_API_URL + "/api/upload-excel",
+  import.meta.env.VITE_API_BASE_URL + "/api/upload-excel",
   {
     method: "POST",
     body: formData,
   }
 );
+
 
       const data = await res.json();
       if (data.success) {
