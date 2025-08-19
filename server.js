@@ -19,12 +19,11 @@ const PORT = process.env.PORT || 3001;
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "https://mutabakat-figma.netlify.app",
-      "https://mutabakat-snnr.netlify.app",
-      /\.onrender\.com$/,
-    ],
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://mutabakat-otomatik.netlify.app",
+  /\.onrender\.com$/,
+],
     credentials: true,
   })
 );
