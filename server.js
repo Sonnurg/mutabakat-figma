@@ -13,20 +13,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;  // ✅ sadece 1 tane port tanımı
 
 // ✅ CORS
 app.use(
   cors({
     origin: [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://mutabakat-otomatik.netlify.app",
-  /\.onrender\.com$/,
-],
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://mutabakat-otomatik.netlify.app", // Netlify
+      /\.onrender\.com$/,                       // Render
+      /\.github\.dev$/,                         // ✅ Codespaces/GitHub preview
+    ],
     credentials: true,
   })
 );
+
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -45,7 +47,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /**
- * 📌 Excel upload & PDF üretim (pdfkit ile)
+ * 📌 Excel upload & PDF üretim
  */
 app.post("/api/upload-excel", upload.single("excel"), async (req, res) => {
   try {
@@ -80,17 +82,19 @@ app.post("/api/upload-excel", upload.single("excel"), async (req, res) => {
       doc.end();
     });
 
-   res.json({
-  success: true,
-  message: `${rows.length} PDF üretildi ✅`,
-  files: fs.readdirSync(outputDir),
-  rows: rows   // ✅ Excel satırlarını dön
-});
+    res.json({
+      success: true,
+      message: `${rows.length} PDF üretildi ✅`,
+      files: fs.readdirSync(outputDir),
+      rows: rows, // ✅ Excel satırlarını dön
+    });
   } catch (err) {
     console.error("Excel upload + PDF üretim hatası:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "PDF üretilemedi ❌", error: err.message });
+    res.status(500).json({
+      success: false,
+      message: "PDF üretilemedi ❌",
+      error: err.message,
+    });
   }
 });
 
@@ -119,7 +123,9 @@ app.get("/api/download-file/:filename", (req, res) => {
 });
 
 // 📌 Ping
-app.get("/api/ping", (req, res) => res.json({ success: true, message: "API çalışıyor 🚀" }));
+app.get("/api/ping", (req, res) =>
+  res.json({ success: true, message: "API çalışıyor 🚀" })
+);
 
 // 🚀 Server start
-app.listen(PORT, () => console.log(`🚀 Server running: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

@@ -34,6 +34,7 @@ export function UploadPage({ onNext, onBack }: UploadPageProps) {
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log("📂 Drag event:", e.type);
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
@@ -46,52 +47,64 @@ export function UploadPage({ onNext, onBack }: UploadPageProps) {
     e.stopPropagation();
     setDragActive(false);
 
+    console.log("📂 File dropped:", e.dataTransfer.files);
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(e.dataTransfer.files[0]);
     }
   }, []);
 
-const handleFileUpload = async (file: File) => {
-  if (file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-    setUploading(true);
-    setUploadProgress(0);
+  const handleFileUpload = async (file: File) => {
+    console.log("📤 handleFileUpload called with:", file);
 
-    const formData = new FormData();
-    formData.append("excel", file);
+    if (file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      setUploading(true);
+      setUploadProgress(0);
 
-    try {
-     const res = await fetch(
-  import.meta.env.VITE_API_BASE_URL + "/api/upload-excel",
-  {
-    method: "POST",
-    body: formData,
-  }
-);
+      const formData = new FormData();
+      formData.append("excel", file);
 
+      try {
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/upload-excel`;
+        console.log("🌍 API URL:", apiUrl);
 
-      const data = await res.json();
-      if (data.success) {
-        setUploadedFile({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          preview: data.rows || []   // ✅ backend’den excel’den parse edilen satırları döndür
+        const res = await fetch(apiUrl, {
+          method: "POST",
+          body: formData,
         });
-      } else {
-        alert("Yükleme hatası: " + data.message);
-      }
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("Sunucuya bağlanılamadı ❌");
-    } finally {
-      setUploading(false);
-      setUploadProgress(100);
-    }
-  }
-};
 
+        console.log("📡 Fetch response status:", res.status);
+
+        const data = await res.json();
+        console.log("📡 Fetch response JSON:", data);
+
+        if (data.success) {
+          setUploadedFile({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            preview: data.rows || []
+          });
+          console.log("✅ File uploaded successfully, preview set.");
+        } else {
+          console.error("❌ Upload error from server:", data.message);
+          alert("Yükleme hatası: " + data.message);
+        }
+      } catch (err) {
+        console.error("❌ Upload error (catch):", err);
+        alert("Sunucuya bağlanılamadı ❌");
+      } finally {
+        setUploading(false);
+        setUploadProgress(100);
+        console.log("⏹ Upload finished");
+      }
+    } else {
+      console.warn("⚠️ Invalid file type:", file.type);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("📂 File selected from input:", e.target.files);
     if (e.target.files && e.target.files[0]) {
       handleFileUpload(e.target.files[0]);
     }
@@ -123,36 +136,6 @@ const handleFileUpload = async (file: File) => {
                   <div>
                     <p className="font-medium text-blue-600">Upload Excel</p>
                     <p className="text-sm text-gray-500">Current step</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3 opacity-50">
-                  <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-semibold">2</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Select Template</p>
-                    <p className="text-sm text-gray-500">Next step</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3 opacity-50">
-                  <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-semibold">3</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Map Fields</p>
-                    <p className="text-sm text-gray-500">Step 3</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3 opacity-50">
-                  <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-semibold">4</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Generate</p>
-                    <p className="text-sm text-gray-500">Final step</p>
                   </div>
                 </div>
               </CardContent>
@@ -213,16 +196,12 @@ const handleFileUpload = async (file: File) => {
                           Browse Files
                         </Button>
                       </label>
-                      <p className="text-sm text-gray-500 mt-4">
-                        Supported formats: .xlsx, .xls (Max 10MB)
-                      </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-6">
-                {/* File Info */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
@@ -245,67 +224,8 @@ const handleFileUpload = async (file: File) => {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Data Preview */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Data Preview</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-3 font-medium text-gray-900">Customer Name</th>
-                            <th className="text-left p-3 font-medium text-gray-900">Balance</th>
-                            <th className="text-left p-3 font-medium text-gray-900">Account</th>
-                            <th className="text-left p-3 font-medium text-gray-900">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {uploadedFile.preview?.map((row, index) => (
-                            <tr key={index} className="border-b hover:bg-gray-50">
-                              <td className="p-3 text-gray-900">{row.CustomerName}</td>
-                              <td className="p-3 text-gray-900">{row.Balance}</td>
-                              <td className="p-3 text-gray-600">{row.Account}</td>
-                              <td className="p-3 text-gray-600">{row.Date}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-blue-900">File Analysis Complete</p>
-                          <p className="text-sm text-blue-700">
-                            Found 5 records with 4 columns. All data appears to be valid and ready for processing.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
-
-            {/* Navigation */}
-            <div className="flex justify-between mt-8">
-              <Button variant="outline" onClick={onBack} className="flex items-center space-x-2">
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back</span>
-              </Button>
-              
-              <Button 
-                onClick={onNext} 
-                disabled={!uploadedFile}
-                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                <span>Next: Select Template</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </div>
