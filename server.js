@@ -5,9 +5,9 @@ import cors from "cors";
 import path, { dirname } from "path";
 import fs from "fs";
 import XLSX from "xlsx";
-import puppeteer from "puppeteer";
 import { fileURLToPath } from "url";
 import archiver from "archiver";
+import PDFDocument from "pdfkit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,47 +45,41 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// 📌 Excel upload & PDF üretim
+/**
+ * 📌 Excel upload & PDF üretim (pdfkit ile)
+ */
 app.post("/api/upload-excel", upload.single("excel"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: "Excel dosyası yok ❌" });
+    if (!req.file)
+      return res.status(400).json({ success: false, message: "Excel dosyası yok ❌" });
 
     // Excel oku
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    // PDF üret
-    const browser = await puppeteer.launch({
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  headless: true,
-  executablePath: puppeteer.executablePath(), // doğru yolu bulması için
-});
     const outputDir = path.join(__dirname, "output");
     fs.rmSync(outputDir, { recursive: true, force: true }); // önce temizle
     fs.mkdirSync(outputDir, { recursive: true });
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const page = await browser.newPage();
-      const htmlContent = `
-        <html>
-          <head><meta charset="utf-8" /></head>
-          <body style="font-family: Arial; padding: 20px;">
-            <h1>Mutabakat Mektubu</h1>
-            <p><b>Müşteri:</b> ${row["Customer Name"] || "Bilinmiyor"}</p>
-            <p><b>Hesap No:</b> ${row["Account"] || "Yok"}</p>
-            <p><b>Bakiye:</b> ${row["Balance"] || "0"}</p>
-            <p><b>Tarih:</b> ${row["Date"] || new Date().toLocaleDateString()}</p>
-          </body>
-        </html>
-      `;
-      await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    // Her satır için PDF üret
+    rows.forEach((row, i) => {
       const pdfPath = path.join(outputDir, `mutabakat_${i + 1}.pdf`);
-      await page.pdf({ path: pdfPath, format: "A4" });
-      await page.close();
-    }
-    await browser.close();
+      const doc = new PDFDocument();
+
+      const stream = fs.createWriteStream(pdfPath);
+      doc.pipe(stream);
+
+      doc.fontSize(18).text("Mutabakat Mektubu", { align: "center" });
+      doc.moveDown();
+
+      doc.fontSize(12).text(`Müşteri: ${row["Customer Name"] || "Bilinmiyor"}`);
+      doc.text(`Hesap No: ${row["Account"] || "Yok"}`);
+      doc.text(`Bakiye: ${row["Balance"] || "0"}`);
+      doc.text(`Tarih: ${row["Date"] || new Date().toLocaleDateString()}`);
+
+      doc.end();
+    });
 
     res.json({
       success: true,
@@ -94,7 +88,9 @@ app.post("/api/upload-excel", upload.single("excel"), async (req, res) => {
     });
   } catch (err) {
     console.error("Excel upload + PDF üretim hatası:", err);
-    res.status(500).json({ success: false, message: "PDF üretilemedi ❌", error: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "PDF üretilemedi ❌", error: err.message });
   }
 });
 
